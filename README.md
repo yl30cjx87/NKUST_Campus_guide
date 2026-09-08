@@ -4,6 +4,12 @@
 
 正式網站：<https://nkust-art-islands.tcvs-bald.chatgpt.site/>
 
+### 手機掃描
+
+[<img src="./NKUST-art-quest-QR.png" alt="掃描 QR Code 開啟高科生力軍五校區藝術探索" width="220">](https://nkust-art-islands.tcvs-bald.chatgpt.site/)
+
+掃描上方 QR Code，或直接點擊圖片進入正式網站。
+
 ## 功能
 
 - 五校區首頁地圖：建工、燕巢、第一、楠梓、旗津。
