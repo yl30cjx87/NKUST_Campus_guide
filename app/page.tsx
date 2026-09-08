@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Maximize2, X } from "lucide-react";
-import type { CampusScene } from "./scene/campus-scene";
+import type { CampusScene, CampusSceneOptions } from "./scene/campus-scene";
 import CampusMap from "./features/campus-explorer/CampusMap";
 import { sampleArtSpots, shuffleChoiceNames, shuffleSpots } from "./features/art-quest/randomize";
 import { campusForHash, hashForCampus } from "./shared/routing/campus-routes.mjs";
@@ -15,6 +15,26 @@ const campuses = [
   { name: "燕巢校區", short: "燕巢", tag: "山林人文", color: 0x9670b0, pos: [4, 1.3, -3.3] },
   { name: "旗津校區", short: "旗津", tag: "港灣航海", color: 0x458fc0, pos: [7.2, 0.2, 1.4] },
 ] as const;
+
+type SceneFactory = (host: HTMLElement, options?: CampusSceneOptions) => CampusScene;
+const sceneFactoryCache = new Map<string, Promise<SceneFactory>>();
+
+function loadCampusSceneFactory(campus: string): Promise<SceneFactory> {
+  const cached = sceneFactoryCache.get(campus);
+  if (cached) return cached;
+  const pending: Promise<SceneFactory> = campus === "旗津校區"
+    ? import("./scene/cijin").then((module) => module.createCijinScene)
+    : campus === "建工校區"
+      ? import("./scene/jiangong").then((module) => module.createJiangongScene)
+      : campus === "第一校區"
+        ? import("./scene/first-campus").then((module) => module.createFirstCampusScene)
+        : campus === "楠梓校區"
+          ? import("./scene/nanzih").then((module) => module.createNanzihScene)
+          : import("./scene/yanchao").then((module) => module.createYanchaoScene);
+  sceneFactoryCache.set(campus, pending);
+  pending.catch(() => sceneFactoryCache.delete(campus));
+  return pending;
+}
 
 const completionSurveyUrl = "https://docs.google.com/forms/d/e/1FAIpQLSefbdYgZY3kenMTrydfMOwWoHCu5XxRd1ScOgwUVj0c9BYKaQ/viewform?usp=header";
 
@@ -76,7 +96,7 @@ const campusSpotCatalog: Record<string, readonly ArtSpot[]> = {
 
 const campusMapImages: Record<string, string> = {
   建工校區: "/jiangong-art-map-no-names.png",
-  燕巢校區: "/yanchao-art-map-no-names.png",
+  燕巢校區: "/yanchao-art-map-no-names.webp",
   第一校區: "/first-campus-art-map-no-names.png",
   旗津校區: "/qijin-campus-art-map-no-names.png",
   楠梓校區: "/nanzih-campus-art-map-no-names.png",
@@ -124,6 +144,13 @@ export default function Home() {
   const [celebrationDismissed, setCelebrationDismissed] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   useEffect(() => {
+    // 首頁完成首屏後才背景下載各校區程式；不建立 WebGL 場景，也不增加 GPU 記憶體。
+    const timer = window.setTimeout(() => {
+      void Promise.all(campuses.map((campus) => loadCampusSceneFactory(campus.name))).catch(() => undefined);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
     if (mode !== "world") return;
     const host = miniatureHostRef.current;
     if (!host) return;
@@ -140,15 +167,8 @@ export default function Home() {
       api.resetCampusView = miniature.resetView;
       setLoaded(true);
     };
-      // 只建立選定校區；離開時釋放 GPU 資源，避免多個場景同時運作。
-      const factory = selected === "旗津校區"
-        ? import("./scene/cijin").then((module) => module.createCijinScene)
-        : selected === "建工校區"
-          ? import("./scene/jiangong").then((module) => module.createJiangongScene)
-          : selected === "第一校區"
-            ? import("./scene/first-campus").then((module) => module.createFirstCampusScene)
-            : import("./scene/simple-campus").then((module) => (host: HTMLDivElement, options: Parameters<typeof module.createSimpleCampusScene>[2]) => module.createSimpleCampusScene(host, selected, options));
-      factory.then((createScene) => {
+      // 只建立選定校區；程式通常已由首頁背景預載，離開時仍完整釋放 GPU 資源。
+      loadCampusSceneFactory(selected).then((createScene) => {
         if (cancelled) return;
         ownedScene = createScene(host, {
           onModeChange: setModelNight,
@@ -182,6 +202,7 @@ export default function Home() {
     const navigate = () => {
       const campus = campusForHash(window.location.hash);
       if (campus) {
+        void loadCampusSceneFactory(campus);
         setSelected(campus); setFocused(true); setMode("world");
       } else if (!window.location.hash || window.location.hash === "#") {
         setMode("home"); setFocused(false);
@@ -192,6 +213,7 @@ export default function Home() {
     return () => window.removeEventListener("hashchange", navigate);
   }, []);
   const focusCampus = (name: string) => {
+    void loadCampusSceneFactory(name);
     const hash = hashForCampus(name);
     if (hash && window.location.hash !== hash) window.location.assign(hash);
     setSelected(name);

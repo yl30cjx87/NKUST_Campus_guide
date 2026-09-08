@@ -101,7 +101,9 @@ for (const name of ["楠梓校區", "第一校區", "燕巢校區"]) {
     } finally { model.dispose(); model.dispose(); e.restore(); }
   });
   for (const [width, height] of [[1280, 724], [390, 768], [844, 314]]) test(`${name}: day/night, idle, rotation, resize and disposal at ${width}x${height}`, () => {
-    const e = environment(width, height), api = load("simple-campus", e.overrides).createSimpleCampusScene(e.host, name);
+    const e = environment(width, height);
+    const createModel = () => load("simple-campus-model", e.overrides).createSimpleCampusModel(name);
+    const api = load("simple-campus", e.overrides).createSimpleCampusScene(e.host, name, {}, createModel);
     try {
       e.flush(1); const { renderer } = e.state, model = api.sceneObjects.model, meshes = renderer.scene.children.slice();
       assert.equal(e.canvas.dataset.lighting, "day");

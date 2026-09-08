@@ -1,13 +1,21 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { createSimpleCampusModel } from "./simple-campus-model";
+import type { createSimpleCampusModel } from "./simple-campus-model";
 import { createModelTurntable } from "./model-turntable.mjs";
 import { createAutoNightSwitch } from "./auto-night.mjs";
 import type { CampusScene, CampusSceneOptions } from "./campus-scene";
 
-// 三個待製作校區共用這個展示器；建工、旗津仍使用原本的獨立展示器。
-export function createSimpleCampusScene(host: HTMLElement, name: string, options: CampusSceneOptions = {}): CampusScene {
-  const model = createSimpleCampusModel(name), { group, sceneObjects, mats } = model;
+type CampusModel = ReturnType<typeof createSimpleCampusModel>;
+
+// 楠梓、燕巢共用渲染器，但由各自的動態模組注入模型工廠，避免進入其中一校時下載另一校的模型。
+export function createSimpleCampusScene(
+  host: HTMLElement,
+  name: string,
+  options: CampusSceneOptions = {},
+  createModel?: () => CampusModel,
+): CampusScene {
+  if (!createModel) throw new Error(`Missing model factory for ${name}`);
+  const model = createModel(), { group, sceneObjects, mats } = model;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let renderer: THREE.WebGLRenderer;
   try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); }

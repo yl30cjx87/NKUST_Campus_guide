@@ -210,13 +210,15 @@ test("uses a native Three.js miniature gate scene instead of loading a heavy cam
 test("loads only the selected detailed campus and disposes it on navigation", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(page, /selected === "旗津校區"\s*\? import\("\.\/scene\/cijin"\)/);
+  assert.match(page, /campus === "旗津校區"\s*\? import\("\.\/scene\/cijin"\)/);
   assert.match(page, /if \(cancelled\) return;\s*ownedScene = createScene/);
   assert.match(page, /ownedScene\?\.dispose\(\)/);
   assert.match(page, /campusForHash\(window\.location\.hash\)/);
   assert.match(page, /hashForCampus\(name\)/);
   assert.match(page, /const pureModel = mode === "world";/);
-  assert.match(page, /import\("\.\/scene\/simple-campus"\)/);
+  assert.match(page, /import\("\.\/scene\/nanzih"\)/);
+  assert.match(page, /import\("\.\/scene\/yanchao"\)/);
+  assert.match(page, /Promise\.all\(campuses\.map\(\(campus\) => loadCampusSceneFactory\(campus\.name\)\)\)/);
   assert.doesNotMatch(page, /new THREE\.Scene|new THREE\.WebGLRenderer|className="campus-hud focused"/);
   assert.match(page, /modelActions\.current\.enterMap\(selected\)/);
   assert.match(page, /className="three-world jiangong-world" hidden=\{!pureModel\}/);
